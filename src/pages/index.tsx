@@ -1,31 +1,10 @@
 import type { NextPage } from "next";
-import Head from "next/head";
 import { z } from "zod";
-import { FormProvider, useForm, useFormContext, UseFormReturn } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { ReactNode } from "react";
+import { FormData, useAutoForm } from "../lib/useAutoForm";
+import { AutoForm } from "../lib/AutoForm";
 
-type FieldSchema = {
-  component?: "text" | "textarea" | "email" | "number" | "password";
-  label?: string;
-  validator?: z.ZodType;
-  initialValue?: string | number | Date | boolean | null;
-};
-
-type CustomFieldSchema = {
-  component: "custom";
-  label?: string;
-  validator?: z.ZodType;
-  initialValue?: string | number | Date | boolean | null;
-  render: (props: { register: string; errors: string }) => JSX.Element;
-};
-
-type FormSchema = {
-  [key: string]: string | FieldSchema | CustomFieldSchema;
-};
-
-const formSchema: FormSchema = {
-  name: "John Doe",
+const formSchema = {
+  name: { label: "Nombre" },
   email: {
     component: "email",
     label: "Email",
@@ -44,169 +23,33 @@ const formSchema: FormSchema = {
     initialValue: "john",
     render: () => (
       <div>
-        <textarea></textarea>
+        <textarea>Hola, esto tendria que registrarlo pero paja</textarea>
       </div>
     ),
   },
-};
-
-const generateZodSchema = (form: FormSchema) => {
-  const schemaObject: { [key: string]: z.ZodType } = {};
-  Object.entries(form).forEach(([name, field]) => {
-    if (typeof field === "string") {
-      schemaObject[name] = z.string().optional();
-    } else {
-      schemaObject[name] = field.validator ?? z.string().optional();
-    }
-  });
-
-  return z.object(schemaObject);
-};
-
-const generateInitialValues = (form: FormSchema) => {
-  const initialValues: { [key: string]: FieldSchema["initialValue"] } = {};
-  Object.entries(form).forEach(([name, field]) => {
-    if (typeof field === "string") {
-      initialValues[name] = null;
-    } else {
-      initialValues[name] = field.initialValue ?? null;
-    }
-  });
-
-  return initialValues;
-};
-
-const Form = ({
-  form,
-  onSubmit,
-  children,
-  ...props
-}: {
-  form: UseFormReturn;
-  onSubmit: (data: any) => Promise<any>;
-  children: ReactNode;
-}) => {
-  return (
-    <FormProvider {...form}>
-      {/* the `form` passed here is return value of useForm() hook */}
-      <form onSubmit={form.handleSubmit(onSubmit)} {...props}>
-        <fieldset disabled={form.formState.isSubmitting}>{children}</fieldset>
-      </form>
-    </FormProvider>
-  );
-};
-
-import { forwardRef } from "react";
-
-export function FieldError({ name }: { name?: string }) {
-  const {
-    formState: { errors },
-  } = useFormContext();
-
-  if (!name) return null;
-
-  const error = errors[name];
-
-  if (!error) return null;
-
-  return <span className="text-sm text-red-500">{error.message?.toString()}</span>;
-}
-
-interface InputProps {
-  type: string;
-  label: string;
-  name: string;
-}
-
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, type = "text", ...props },
-  ref
-) {
-  return (
-    <div className="mb-4 w-72">
-      <label>{label}</label>
-      <input
-        className="block w-full rounded-md border border-gray-300 py-1 px-2 shadow-sm"
-        type={type}
-        ref={ref}
-        {...props}
-      />
-      <FieldError name={props.name} />
-    </div>
-  );
-});
-
-const AutoForm = ({
-  formSchema,
-  onSubmit,
-}: {
-  formSchema: FormSchema;
-  onSubmit: (data: any) => Promise<any>;
-}) => {
-  const schema = generateZodSchema(formSchema);
-  const initialValues = generateInitialValues(formSchema);
-
-  const form = useForm({ resolver: zodResolver(schema), defaultValues: initialValues });
-
-  return (
-    <Form form={form} onSubmit={onSubmit}>
-      {Object.entries(formSchema).map(([name, input]) => (
-        <Input
-          key={name}
-          label={(typeof input === "string" ? name : input.label) ?? ""}
-          type={(typeof input === "string" ? "text" : input.component) ?? "text"}
-          {...form.register(name)}
-        />
-      ))}
-      <button className="rounded-md border-0 bg-blue-500 px-4 py-2 text-white" type="submit">
-        submit
-      </button>
-    </Form>
-  );
-};
+} as const;
 
 const Home: NextPage = () => {
-  const schema = generateZodSchema(formSchema);
-  const initialValues = generateInitialValues(formSchema);
+  const onSubmit = async (data: FormData<typeof formSchema>) => {
+    return new Promise((res) => {
+      setTimeout(() => {
+        // muchisimo codigo de mieda
+        console.log(data); // aca esta tipado tambien!
+        res(data);
+      }, 2000);
+    });
+  };
 
-  const form = useForm({ resolver: zodResolver(schema), defaultValues: initialValues });
-  const {
-    formState: { errors },
-  } = form;
+  const { controller } = useAutoForm(formSchema, {
+    onSubmit,
+  });
 
   return (
-    <>
-      <Head>
-        <title>Create T3 App</title>
-        <meta name="description" content="Generated by create-t3-app" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <div className="flex h-screen w-screen items-start justify-center bg-gray-100 pt-10">
-        <div className="rounded-lg bg-white p-6">
-          <AutoForm
-            formSchema={formSchema}
-            onSubmit={async (values) => {
-              alert(values);
-              return Promise.resolve();
-            }}
-          />
-        </div>
+    <div className="flex h-screen w-screen items-start justify-center bg-gray-100 pt-10">
+      <div className="rounded-lg bg-white p-6">
+        <AutoForm controller={controller} />
       </div>
-
-      {/* <Form
-        form={form}
-        onSubmit={async (values) => {
-          alert(values);
-          return Promise.resolve();
-        }}
-      >
-        <button type="submit">Hola</button>
-      </Form> */}
-
-      <pre>{JSON.stringify(errors, null, 2)}</pre>
-      <pre>{}</pre>
-    </>
+    </div>
   );
 };
 
