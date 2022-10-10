@@ -4,15 +4,17 @@ import { DeepPartial, useForm } from "react-hook-form";
 import { z } from "zod";
 import { InputProps } from "./ExampleInput";
 
-type FieldSchema = {
-  component?: NamedExoticComponent<InputProps> | ((props: InputProps) => JSX.Element);
-  label?: string;
-  validator?: z.ZodType;
-  initialValue?: string | number | Date | boolean | null;
+type FieldSchema<T extends z.ZodType> = {
+  label: string;
+  component: NamedExoticComponent<InputProps> | ((props: InputProps) => JSX.Element);
+  validator?: T;
+  initialValue?: z.infer<T>;
 };
 
+export const fieldHelper = <T extends z.ZodType>(field: FieldSchema<T>) => field;
+
 export type FormSchema = {
-  [key: string]: FieldSchema;
+  [key: string]: FieldSchema<z.ZodType>;
 };
 
 export type FormData<TSchema> = {
@@ -23,9 +25,6 @@ export type FormData<TSchema> = {
     : string | undefined;
 };
 
-// export type InitialValues<TSchema> = {
-//   [B in keyof TSchema]?: FieldSchema["initialValue"];
-// };
 export type InitialValues<TSchema> = { [K in keyof FormData<TSchema>]?: FormData<TSchema>[K] };
 
 const generateZodSchema = (form: FormSchema) => {
@@ -68,13 +67,11 @@ export const useAutoForm = <T extends FormSchema>(
   const schema = generateZodSchema(formSchema);
   const generatedInitialValues = generateInitialValues(formSchema, initialValues);
 
-  const form = useForm({
+  const form = useForm<FormData<T>>({
     resolver: zodResolver(schema),
-    defaultValues: generatedInitialValues as DeepPartial<typeof schema>,
+    defaultValues: generatedInitialValues as DeepPartial<FormData<T>>,
   });
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   const items = { form, onSubmit: form.handleSubmit(onSubmit), formSchema };
   return { ...items, controller: items };
 };
