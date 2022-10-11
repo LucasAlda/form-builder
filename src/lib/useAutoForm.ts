@@ -4,32 +4,41 @@ import { DeepPartial, useForm } from "react-hook-form";
 import { z } from "zod";
 import { InputProps } from "./ExampleInput";
 
-type FieldSchema<T extends z.ZodType> = {
+type FieldSchema = {
   label: string;
   component: NamedExoticComponent<InputProps> | ((props: InputProps) => JSX.Element);
-  validator?: T;
+  validator?: z.ZodType;
+  initialValue?: string | number | boolean | Date;
+};
+
+type SafeFieldSchema<T extends z.ZodType> = Omit<FieldSchema, "validator" | "initialValues"> & {
+  validator: T;
   initialValue?: z.infer<T>;
 };
 
-export const fieldHelper = <T extends z.ZodType>(field: FieldSchema<T>) => field;
+export const fieldHelper = <T>(field: T extends z.ZodType ? SafeFieldSchema<T> : FieldSchema) => field;
 
 export type FormSchema = {
-  [key: string]: FieldSchema<z.ZodType>;
+  [key: string]: FieldSchema;
 };
 
-export type FormData<TSchema> = {
+type ZodSchema<TSchema> = {
   [B in keyof TSchema]: TSchema[B] extends FormSchema[string]
     ? TSchema[B]["validator"] extends z.ZodType
-      ? z.infer<TSchema[B]["validator"]>
-      : string | undefined
-    : string | undefined;
+      ? TSchema[B]["validator"]
+      : z.ZodOptional<z.ZodString>
+    : z.ZodOptional<z.ZodString>;
 };
+
+export type FormData<TSchema> = { [K in keyof ZodSchema<TSchema>]: z.infer<ZodSchema<TSchema>[K]> };
 
 export type InitialValues<TSchema> = { [K in keyof FormData<TSchema>]?: FormData<TSchema>[K] };
 
-const generateZodSchema = (form: FormSchema) => {
-  const schemaObject: { [key: string]: z.ZodType } = {};
-  Object.entries(form).forEach(([name, field]) => {
+const generateZodSchema = <T extends FormSchema>(
+  form: T
+): z.ZodObject<ZodSchema<T>, "strip", z.ZodTypeAny, FormData<T>, FormData<T>> => {
+  const schemaObject = {} as ZodSchema<T>;
+  (Object.entries(form) as Entries<FormData<T>>).forEach(([name, field]) => {
     schemaObject[name] = field.validator ?? z.string().optional();
   });
 

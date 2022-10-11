@@ -34,10 +34,10 @@ const formSchema = {
   custom: fieldHelper({
     label: "Custom",
     component: Textarea,
-    validator: z.string().min(1),
-    initialValue: "john",
+    validator: z.number().min(1),
+    initialValue: 123,
   }),
-} as const;
+};
 
 const Home: NextPage = () => {
   const onSubmit = async (data: FormData<typeof formSchema>) => {
@@ -53,7 +53,7 @@ const Home: NextPage = () => {
   const { controller, form } = useAutoForm(formSchema, {
     onSubmit,
     initialValues: {
-      custom: "Mucho texto",
+      custom: 123,
     },
   });
 
