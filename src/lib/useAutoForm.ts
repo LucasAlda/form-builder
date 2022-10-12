@@ -8,10 +8,10 @@ type FieldSchema = {
   label: string;
   component: NamedExoticComponent<InputProps> | ((props: InputProps) => JSX.Element);
   validator?: z.ZodType;
-  initialValue?: string | number | boolean | Date;
+  initialValue?: string | number | boolean | Date | { [key: string]: unknown };
 };
 
-type SafeFieldSchema<T extends z.ZodType> = Omit<FieldSchema, "validator" | "initialValues"> & {
+type SafeFieldSchema<T extends z.ZodType> = Omit<FieldSchema, "validator" | "initialValue"> & {
   validator: T;
   initialValue?: z.infer<T>;
 };
